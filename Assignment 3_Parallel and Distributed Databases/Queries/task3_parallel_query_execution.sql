@@ -37,8 +37,9 @@ ORDER BY
 SET max_parallel_workers_per_gather = 4;
 SET parallel_setup_cost = 10;
 SET parallel_tuple_cost = 0.01;
-SET min_parallel_table_scan_size = 8MB;
-SET min_parallel_index_scan_size = 512KB;
+-- Note: Size values must be in bytes (8MB = 8388608 bytes, 512KB = 524288 bytes)
+SET min_parallel_table_scan_size = 8388608;  -- 8MB in bytes
+SET min_parallel_index_scan_size = 524288;   -- 512KB in bytes
 
 -- =====================================================
 -- STEP 3: Create Large Dataset for Testing
@@ -46,19 +47,37 @@ SET min_parallel_index_scan_size = 512KB;
 
 -- Insert more sample data to make queries benefit from parallelism
 -- (Run this to expand the dataset)
+-- Note: This uses existing VoterID and CandidateID from the basic tables
 DO $$
 DECLARE
     i INTEGER;
+    max_voter_id INTEGER;
+    max_candidate_id INTEGER;
 BEGIN
+    -- Get maximum valid IDs
+    SELECT COALESCE(MAX(VoterID), 1) INTO max_voter_id FROM Voter;
+    SELECT COALESCE(MAX(CandidateID), 1) INTO max_candidate_id FROM Candidate;
+    
+    -- Insert sample ballots
+    -- Skip voters who already have valid votes (to avoid trigger conflicts)
     FOR i IN 1..1000 LOOP
-        INSERT INTO Ballot (VoterID, CandidateID, VoteDate, Validity)
-        VALUES (
-            (RANDOM() * 5 + 1)::INTEGER,
-            (RANDOM() * 5 + 1)::INTEGER,
-            CURRENT_TIMESTAMP - (RANDOM() * 365 || ' days')::INTERVAL,
-            CASE WHEN RANDOM() > 0.1 THEN 'Valid' ELSE 'Invalid' END
-        );
+        BEGIN
+            INSERT INTO Ballot (VoterID, CandidateID, VoteDate, Validity)
+            VALUES (
+                ((RANDOM() * max_voter_id)::INTEGER + 1),
+                ((RANDOM() * max_candidate_id)::INTEGER + 1),
+                CURRENT_TIMESTAMP - (RANDOM() * 365 || ' days')::INTERVAL,
+                CASE WHEN RANDOM() > 0.1 THEN 'Valid' ELSE 'Invalid' END
+            );
+        EXCEPTION
+            WHEN OTHERS THEN
+                -- Silently skip duplicates (voters who already voted)
+                -- This is expected behavior due to duplicate vote prevention trigger
+                NULL;
+        END;
     END LOOP;
+    
+    RAISE NOTICE 'Completed inserting sample ballots (some may have been skipped due to duplicate vote prevention)';
 END $$;
 
 -- =====================================================
@@ -123,7 +142,11 @@ SELECT
     p.PartyName,
     COUNT(DISTINCT c.CandidateID) AS Candidates,
     COUNT(b.BallotID) AS TotalBallots,
-    ROUND(AVG(EXTRACT(EPOCH FROM (CURRENT_TIMESTAMP - b.VoteDate)) / 86400), 2) AS AvgDaysSinceVote
+    ROUND(AVG(CASE 
+        WHEN b.VoteDate IS NOT NULL 
+        THEN EXTRACT(EPOCH FROM (CURRENT_TIMESTAMP - b.VoteDate)) / 86400 
+        ELSE NULL 
+    END), 2) AS AvgDaysSinceVote
 FROM 
     Constituency con
     INNER JOIN Candidate c ON con.ConstituencyID = c.ConstituencyID
@@ -161,7 +184,7 @@ WHERE
 -- Check parallel query statistics
 SELECT 
     schemaname,
-    tablename,
+    relname AS tablename,
     seq_scan,
     idx_scan,
     n_tup_ins,
@@ -170,9 +193,9 @@ SELECT
 FROM 
     pg_stat_user_tables
 WHERE 
-    tablename IN ('ballot', 'candidate', 'voter')
+    relname IN ('ballot', 'candidate', 'voter')
 ORDER BY 
-    tablename;
+    relname;
 
 -- Explanation:
 -- PostgreSQL automatically decides when to use parallel execution based on:
