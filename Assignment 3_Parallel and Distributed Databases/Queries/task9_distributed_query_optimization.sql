@@ -1,13 +1,14 @@
 -- =====================================================
--- TASK 17: Distributed Query Optimization
+-- TASK 9: Distributed Query Optimization
+-- Assignment 3: Distributed and Parallel Database
 -- Database: evotingdb
 -- PostgreSQL (pgAdmin 4) Compatible
 -- =====================================================
 
 -- Prerequisites: 
--- 1. Run task1_create_schema.sql
--- 2. Run task9_distributed_schema_fragmentation.sql
--- 3. Run task10_database_links_fdw.sql
+-- 1. Run task1_create_schema.sql (basic tasks)
+-- 2. Run task1_distributed_schema_fragmentation.sql (Assignment 3)
+-- 3. Run task2_database_links_fdw.sql (Assignment 3)
 
 -- Analyze how PostgreSQL optimizer handles distributed joins across FDWs
 
