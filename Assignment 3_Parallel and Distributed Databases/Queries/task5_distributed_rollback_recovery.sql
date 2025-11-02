@@ -1,13 +1,14 @@
 -- =====================================================
--- TASK 13: Distributed Rollback and Recovery
+-- TASK 5: Distributed Rollback and Recovery
+-- Assignment 3: Distributed and Parallel Database
 -- Database: evotingdb
 -- PostgreSQL (pgAdmin 4) Compatible
 -- =====================================================
 
 -- Prerequisites: 
--- 1. Run task1_create_schema.sql
--- 2. Run task9_distributed_schema_fragmentation.sql
--- 3. Run task12_two_phase_commit.sql (for prepared transactions)
+-- 1. Run task1_create_schema.sql (basic tasks)
+-- 2. Run task1_distributed_schema_fragmentation.sql (Assignment 3)
+-- 3. Run task4_two_phase_commit.sql (Assignment 3, for prepared transactions)
 
 -- Simulate network failure during distributed transaction and recovery
 
