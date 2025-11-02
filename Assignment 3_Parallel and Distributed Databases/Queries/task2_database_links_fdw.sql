@@ -11,70 +11,68 @@
 -- 3. Run task1_distributed_schema_fragmentation.sql (Assignment 3)
 
 -- PostgreSQL uses Foreign Data Wrapper (FDW) instead of Oracle database links
--- We'll use postgres_fdw to connect between schemas
+-- Since both Node A and Node B are in the same database (different schemas),
+-- we can query them directly without FDW. However, FDW setup is included for
+-- demonstration of distributed database concepts.
 
 -- =====================================================
+-- CLEANUP: Remove any existing FDW objects (if they exist)
+-- =====================================================
+
+-- Drop any existing foreign server to avoid conflicts
+DROP SERVER IF EXISTS nodeB_server CASCADE;
+DROP SERVER IF EXISTS nodeb_server CASCADE;
+
+-- =====================================================
+-- APPROACH 1: Direct Schema Queries (Recommended for Same Database)
+-- =====================================================
+
+-- Since both nodes are in the same database, you can query them directly
+-- This is simpler and doesn't require FDW setup
+-- Example: SELECT * FROM evotingdb_nodeA.candidate UNION ALL SELECT * FROM evotingdb_nodeB.candidate
+
+-- =====================================================
+-- APPROACH 2: Foreign Data Wrapper Setup (Optional - for demonstration)
+-- =====================================================
+
+-- NOTE: FDW setup is optional since both schemas are in the same database.
+-- Uncomment the section below ONLY if you want to demonstrate FDW functionality.
+-- For most cases, use Approach 1 (direct schema queries) above.
+
+/*
 -- STEP 1: Enable Foreign Data Wrapper Extension
--- =====================================================
-
 CREATE EXTENSION IF NOT EXISTS postgres_fdw;
 
--- =====================================================
--- STEP 2: Create Foreign Server (simulates database link)
--- =====================================================
-
--- Note: In a real distributed setup, you'd connect to a different database
--- For simulation, we're connecting to the same database but different schema
-
--- Create foreign server pointing to Node B schema
--- In production, this would be: OPTIONS (host 'remote_host', dbname 'evotingdb')
+-- STEP 2: Create Foreign Server
+-- For same database, use localhost without password in options
 DROP SERVER IF EXISTS nodeB_server CASCADE;
 CREATE SERVER nodeB_server
     FOREIGN DATA WRAPPER postgres_fdw
-    OPTIONS (dbname 'evotingdb');
+    OPTIONS (host 'localhost', port '5432', dbname 'evotingdb');
 
--- =====================================================
--- STEP 3: Create User Mapping
--- =====================================================
-
--- Map current user to remote server
-CREATE USER MAPPING IF NOT EXISTS FOR CURRENT_USER
+-- STEP 3: Create User Mapping (optional - for authentication)
+-- If your PostgreSQL uses trust/local authentication, you may skip this
+-- Or use your actual PostgreSQL credentials:
+DROP USER MAPPING IF EXISTS FOR CURRENT_USER SERVER nodeB_server;
+CREATE USER MAPPING FOR CURRENT_USER
     SERVER nodeB_server
-    OPTIONS (user 'postgres', password 'your_password');
+    OPTIONS (user CURRENT_USER);
 
--- Note: Replace 'your_password' with actual PostgreSQL password
--- Or use a safer authentication method in production
-
--- =====================================================
--- STEP 4: Create Foreign Table (simulates remote table access)
--- =====================================================
-
--- Import foreign schema from Node B
-IMPORT FOREIGN SCHEMA evotingdb_nodeB
-    FROM SERVER nodeB_server
-    INTO evotingdb_nodeA;
-
--- This creates foreign tables in Node A schema that reference Node B tables
--- Now we can query Node B tables from Node A using: evotingdb_nodeA.candidate, etc.
-
--- Alternative: Create specific foreign table manually
--- DROP FOREIGN TABLE IF EXISTS evotingdb_nodeA.foreign_candidate;
--- CREATE FOREIGN TABLE evotingdb_nodeA.foreign_candidate (
---     CandidateID INTEGER,
---     PartyID INTEGER,
---     ConstituencyID INTEGER,
---     FullName VARCHAR(100),
---     Manifesto TEXT
--- ) SERVER nodeB_server
--- OPTIONS (schema_name 'evotingdb_nodeB', table_name 'candidate');
+-- STEP 4: Import Foreign Schema (optional)
+-- This step is not necessary since we can query schemas directly
+-- IMPORT FOREIGN SCHEMA evotingdb_nodeB
+--     FROM SERVER nodeB_server
+--     INTO evotingdb_nodeA;
+*/
 
 -- =====================================================
--- STEP 5: Remote SELECT Query (Accessing Node B from Node A)
+-- STEP 3: Remote SELECT Query (Accessing Node B from Node A)
 -- =====================================================
 
--- Query foreign table (Node B data from Node A)
+-- Query Node B data directly (works without FDW since same database)
 SELECT 
     'Remote Query from Node A' AS QueryType,
+    'Node B Data' AS SourceNode,
     CandidateID,
     FullName,
     Manifesto
@@ -83,8 +81,11 @@ FROM
 ORDER BY 
     CandidateID;
 
+-- This query works because both schemas are in the same database
+-- In a real distributed setup with FDW, you would query foreign tables
+
 -- =====================================================
--- STEP 6: Distributed Join (Local + Remote)
+-- STEP 4: Distributed Join (Local + Remote)
 -- =====================================================
 
 -- Join local Node A candidates with remote Node B candidates
@@ -109,7 +110,7 @@ ORDER BY
     SourceNode, CandidateID;
 
 -- =====================================================
--- STEP 7: Cross-Node Aggregation Query
+-- STEP 5: Cross-Node Aggregation Query
 -- =====================================================
 
 -- Aggregate candidates from both nodes
@@ -132,8 +133,54 @@ FROM
 GROUP BY 
     p.PartyName;
 
+-- =====================================================
+-- VERIFICATION QUERIES
+-- =====================================================
+
+-- Verify FDW extension (if you chose to enable it)
+SELECT 
+    'FDW Extension Status' AS Check,
+    CASE WHEN EXISTS (SELECT 1 FROM pg_extension WHERE extname = 'postgres_fdw')
+         THEN 'Installed' 
+         ELSE 'Not Required - Using Direct Schema Access' 
+    END AS Status;
+
+-- Verify both schemas are accessible
+SELECT 
+    'Schema Access Test' AS Check,
+    'Node A' AS Schema,
+    COUNT(*) AS TableCount,
+    CASE WHEN COUNT(*) > 0 THEN '✓ Accessible' ELSE '✗ Not Found' END AS Status
+FROM 
+    information_schema.tables
+WHERE 
+    table_schema = 'evotingdb_nodea'
+UNION ALL
+SELECT 
+    'Schema Access Test' AS Check,
+    'Node B' AS Schema,
+    COUNT(*) AS TableCount,
+    CASE WHEN COUNT(*) > 0 THEN '✓ Accessible' ELSE '✗ Not Found' END AS Status
+FROM 
+    information_schema.tables
+WHERE 
+    table_schema = 'evotingdb_nodeb';
+
+-- Test distributed query across both nodes
+SELECT 
+    'Distributed Query Test' AS Check,
+    COUNT(*) AS TotalCandidates,
+    CASE WHEN COUNT(*) > 0 THEN '✓ PASS' ELSE '✗ FAIL' END AS Status
+FROM (
+    SELECT CandidateID, FullName FROM evotingdb_nodeA.candidate
+    UNION ALL
+    SELECT CandidateID, FullName FROM evotingdb_nodeB.candidate
+) combined_candidates;
+
 -- Explanation:
--- Foreign Data Wrapper (FDW) allows PostgreSQL to access remote data as if it were local.
--- This simulates Oracle's database links functionality.
--- Queries can join local and remote tables seamlessly.
+-- Since both Node A and Node B schemas are in the same database (evotingdb),
+-- you can query them directly using schema.table notation without needing FDW.
+-- Foreign Data Wrapper (FDW) is useful when connecting to a DIFFERENT database or server.
+-- For this assignment, direct schema access is simpler and more reliable.
+-- The FDW setup is provided as an optional demonstration for distributed database concepts.
 
