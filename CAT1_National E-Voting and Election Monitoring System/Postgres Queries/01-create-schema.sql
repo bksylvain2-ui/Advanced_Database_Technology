@@ -1,91 +1,108 @@
--- National E-Voting and Election Monitoring System
--- Database Schema for Rwanda
+-- ============================================================================
+-- National E-Voting and Election Monitoring System - Rwanda Case Study
+-- Database: evoting
+-- Script 01: Schema Creation
+-- ============================================================================
 
--- Drop tables if they exist (in reverse order of dependencies)
-DROP TABLE IF EXISTS Results CASCADE;
-DROP TABLE IF EXISTS Votes CASCADE;
-DROP TABLE IF EXISTS Voters CASCADE;
-DROP TABLE IF EXISTS Candidates CASCADE;
-DROP TABLE IF EXISTS Constituencies CASCADE;
-DROP TABLE IF EXISTS Parties CASCADE;
+-- Create database (run this separately if needed)
+-- CREATE DATABASE evoting;
 
--- 1. Parties Table
-CREATE TABLE Parties (
+-- Connect to the database
+-- ============================================================================
+-- Table: Constituency
+-- Stores information about electoral constituencies/districts in Rwanda
+-- ============================================================================
+CREATE TABLE Constituency (
+    ConstituencyID SERIAL PRIMARY KEY,
+    Name VARCHAR(100) NOT NULL UNIQUE,
+    Region VARCHAR(50) NOT NULL CHECK (Region IN ('Kigali', 'Northern', 'Southern', 'Eastern', 'Western')),
+    RegisteredVoters INTEGER NOT NULL CHECK (RegisteredVoters >= 0),
+    CONSTRAINT chk_constituency_name CHECK (LENGTH(TRIM(Name)) > 0)
+);
+-- ============================================================================
+-- Table: Party
+-- Stores political party information
+-- ============================================================================
+CREATE TABLE Party (
     PartyID SERIAL PRIMARY KEY,
     PartyName VARCHAR(100) NOT NULL UNIQUE,
-    PartyLeader VARCHAR(100) NOT NULL,
-    FoundedYear INT CHECK (FoundedYear >= 1900 AND FoundedYear <= EXTRACT(YEAR FROM CURRENT_DATE)),
-    Ideology VARCHAR(50),
-    CreatedAt TIMESTAMP DEFAULT CURRENT_TIMESTAMP
+    Leader VARCHAR(100) NOT NULL,
+    Symbol VARCHAR(50),
+    Headquarters VARCHAR(150),
+    CONSTRAINT chk_party_name CHECK (LENGTH(TRIM(PartyName)) > 0),
+    CONSTRAINT chk_leader_name CHECK (LENGTH(TRIM(Leader)) > 0)
 );
-
--- 2. Constituencies Table
-CREATE TABLE Constituencies (
-    ConstituencyID SERIAL PRIMARY KEY,
-    ConstituencyName VARCHAR(100) NOT NULL UNIQUE,
-    Province VARCHAR(50) NOT NULL,
-    RegisteredVoters INT NOT NULL CHECK (RegisteredVoters >= 0),
-    CreatedAt TIMESTAMP DEFAULT CURRENT_TIMESTAMP
-);
-
--- 3. Candidates Table
-CREATE TABLE Candidates (
-    CandidateID SERIAL PRIMARY KEY,
-    CandidateName VARCHAR(100) NOT NULL,
-    PartyID INT NOT NULL,
-    ConstituencyID INT NOT NULL,
-    Age INT CHECK (Age >= 18),
-    Gender VARCHAR(10) CHECK (Gender IN ('Male', 'Female', 'Other')),
-    Education VARCHAR(100),
-    CreatedAt TIMESTAMP DEFAULT CURRENT_TIMESTAMP,
-    FOREIGN KEY (PartyID) REFERENCES Parties(PartyID) ON DELETE CASCADE,
-    FOREIGN KEY (ConstituencyID) REFERENCES Constituencies(ConstituencyID) ON DELETE CASCADE
-);
-
--- 4. Voters Table
-CREATE TABLE Voters (
+-- ============================================================================
+-- Table: Voter
+-- Stores registered voter information
+-- ============================================================================
+CREATE TABLE Voter (
     VoterID SERIAL PRIMARY KEY,
-    VoterName VARCHAR(100) NOT NULL,
+    FullName VARCHAR(150) NOT NULL,
     NationalID VARCHAR(16) NOT NULL UNIQUE,
-    ConstituencyID INT NOT NULL,
-    Age INT CHECK (Age >= 18),
-    Gender VARCHAR(10) CHECK (Gender IN ('Male', 'Female', 'Other')),
-    HasVoted BOOLEAN DEFAULT FALSE,
-    CreatedAt TIMESTAMP DEFAULT CURRENT_TIMESTAMP,
-    FOREIGN KEY (ConstituencyID) REFERENCES Constituencies(ConstituencyID) ON DELETE CASCADE
+    Gender CHAR(1) NOT NULL CHECK (Gender IN ('M', 'F')),
+    ConstituencyID INTEGER NOT NULL,
+    Status VARCHAR(20) NOT NULL DEFAULT 'Active' CHECK (Status IN ('Active', 'Inactive', 'Suspended')),
+    CONSTRAINT fk_voter_constituency FOREIGN KEY (ConstituencyID) 
+        REFERENCES Constituency(ConstituencyID) ON DELETE CASCADE,
+    CONSTRAINT chk_national_id CHECK (LENGTH(NationalID) = 16)
 );
-
--- 5. Votes Table
-CREATE TABLE Votes (
-    VoteID SERIAL PRIMARY KEY,
-    VoterID INT NOT NULL,
-    CandidateID INT NOT NULL,
-    ConstituencyID INT NOT NULL,
-    VoteTimestamp TIMESTAMP DEFAULT CURRENT_TIMESTAMP,
-    FOREIGN KEY (VoterID) REFERENCES Voters(VoterID) ON DELETE CASCADE,
-    FOREIGN KEY (CandidateID) REFERENCES Candidates(CandidateID) ON DELETE CASCADE,
-    FOREIGN KEY (ConstituencyID) REFERENCES Constituencies(ConstituencyID) ON DELETE CASCADE,
-    UNIQUE(VoterID) -- Ensures one vote per voter
+-- ============================================================================
+-- Table: Candidate
+-- Stores candidate information for elections
+-- ============================================================================
+CREATE TABLE Candidate (
+    CandidateID SERIAL PRIMARY KEY,
+    PartyID INTEGER NOT NULL,
+    ConstituencyID INTEGER NOT NULL,
+    FullName VARCHAR(150) NOT NULL,
+    Manifesto TEXT,
+    CONSTRAINT fk_candidate_party FOREIGN KEY (PartyID) 
+        REFERENCES Party(PartyID) ON DELETE CASCADE,
+    CONSTRAINT fk_candidate_constituency FOREIGN KEY (ConstituencyID) 
+        REFERENCES Constituency(ConstituencyID) ON DELETE CASCADE,
+    CONSTRAINT chk_candidate_name CHECK (LENGTH(TRIM(FullName)) > 0)
 );
-
--- 6. Results Table
-CREATE TABLE Results (
+-- ============================================================================
+-- Table: Ballot
+-- Records individual votes cast by voters
+-- CASCADE DELETE ensures ballots are removed if candidate is removed
+-- ============================================================================
+CREATE TABLE Ballot (
+    BallotID SERIAL PRIMARY KEY,
+    VoterID INTEGER NOT NULL,
+    CandidateID INTEGER NOT NULL,
+    VoteDate TIMESTAMP NOT NULL DEFAULT CURRENT_TIMESTAMP,
+    Validity VARCHAR(20) NOT NULL DEFAULT 'Valid' CHECK (Validity IN ('Valid', 'Invalid', 'Disputed')),
+    CONSTRAINT fk_ballot_voter FOREIGN KEY (VoterID) 
+        REFERENCES Voter(VoterID) ON DELETE CASCADE,
+    CONSTRAINT fk_ballot_candidate FOREIGN KEY (CandidateID) 
+        REFERENCES Candidate(CandidateID) ON DELETE CASCADE
+);
+-- ============================================================================
+-- Table: Result
+-- Stores final tallied results for each candidate (1:1 with Candidate)
+-- ============================================================================
+CREATE TABLE Result (
     ResultID SERIAL PRIMARY KEY,
-    CandidateID INT NOT NULL,
-    ConstituencyID INT NOT NULL,
-    TotalVotes INT DEFAULT 0 CHECK (TotalVotes >= 0),
-    VotePercentage DECIMAL(5,2) DEFAULT 0.00,
-    LastUpdated TIMESTAMP DEFAULT CURRENT_TIMESTAMP,
-    FOREIGN KEY (CandidateID) REFERENCES Candidates(CandidateID) ON DELETE CASCADE,
-    FOREIGN KEY (ConstituencyID) REFERENCES Constituencies(ConstituencyID) ON DELETE CASCADE,
-    UNIQUE(CandidateID, ConstituencyID)
+    CandidateID INTEGER NOT NULL UNIQUE,
+    TotalVotes INTEGER NOT NULL DEFAULT 0 CHECK (TotalVotes >= 0),
+    DeclaredDate TIMESTAMP,
+    CONSTRAINT fk_result_candidate FOREIGN KEY (CandidateID) 
+        REFERENCES Candidate(CandidateID) ON DELETE CASCADE
 );
+-- ============================================================================
+-- Create Indexes for Performance
+-- ============================================================================
+CREATE INDEX idx_voter_constituency ON Voter(ConstituencyID);
+CREATE INDEX idx_voter_national_id ON Voter(NationalID);
+CREATE INDEX idx_candidate_party ON Candidate(PartyID);
+CREATE INDEX idx_candidate_constituency ON Candidate(ConstituencyID);
+CREATE INDEX idx_ballot_voter ON Ballot(VoterID);
+CREATE INDEX idx_ballot_candidate ON Ballot(CandidateID);
+CREATE INDEX idx_ballot_date ON Ballot(VoteDate);
+CREATE INDEX idx_result_candidate ON Result(CandidateID);
 
--- Create indexes for better query performance
-CREATE INDEX idx_candidates_party ON Candidates(PartyID);
-CREATE INDEX idx_candidates_constituency ON Candidates(ConstituencyID);
-CREATE INDEX idx_voters_constituency ON Voters(ConstituencyID);
-CREATE INDEX idx_voters_national_id ON Voters(NationalID);
-CREATE INDEX idx_votes_candidate ON Votes(CandidateID);
-CREATE INDEX idx_votes_constituency ON Votes(ConstituencyID);
-CREATE INDEX idx_results_constituency ON Results(ConstituencyID);
+-- ============================================================================
+-- Schema Creation Complete
+-- ============================================================================
