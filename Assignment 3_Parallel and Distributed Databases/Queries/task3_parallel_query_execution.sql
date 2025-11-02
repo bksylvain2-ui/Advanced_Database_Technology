@@ -1,5 +1,6 @@
 -- =====================================================
--- TASK 11: Parallel Query Execution
+-- TASK 3: Parallel Query Execution
+-- Assignment 3: Distributed and Parallel Database
 -- Database: evotingdb
 -- PostgreSQL (pgAdmin 4) Compatible
 -- =====================================================
