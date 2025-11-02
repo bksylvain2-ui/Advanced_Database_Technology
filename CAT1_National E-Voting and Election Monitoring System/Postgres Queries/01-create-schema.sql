@@ -19,6 +19,7 @@ CREATE TABLE Constituency (
     RegisteredVoters INTEGER NOT NULL CHECK (RegisteredVoters >= 0),
     CONSTRAINT chk_constituency_name CHECK (LENGTH(TRIM(Name)) > 0)
 );
+
 -- ============================================================================
 -- Table: Party
 -- Stores political party information
@@ -32,6 +33,7 @@ CREATE TABLE Party (
     CONSTRAINT chk_party_name CHECK (LENGTH(TRIM(PartyName)) > 0),
     CONSTRAINT chk_leader_name CHECK (LENGTH(TRIM(Leader)) > 0)
 );
+
 -- ============================================================================
 -- Table: Voter
 -- Stores registered voter information
@@ -47,6 +49,7 @@ CREATE TABLE Voter (
         REFERENCES Constituency(ConstituencyID) ON DELETE CASCADE,
     CONSTRAINT chk_national_id CHECK (LENGTH(NationalID) = 16)
 );
+
 -- ============================================================================
 -- Table: Candidate
 -- Stores candidate information for elections
@@ -63,6 +66,7 @@ CREATE TABLE Candidate (
         REFERENCES Constituency(ConstituencyID) ON DELETE CASCADE,
     CONSTRAINT chk_candidate_name CHECK (LENGTH(TRIM(FullName)) > 0)
 );
+
 -- ============================================================================
 -- Table: Ballot
 -- Records individual votes cast by voters
@@ -79,6 +83,7 @@ CREATE TABLE Ballot (
     CONSTRAINT fk_ballot_candidate FOREIGN KEY (CandidateID) 
         REFERENCES Candidate(CandidateID) ON DELETE CASCADE
 );
+
 -- ============================================================================
 -- Table: Result
 -- Stores final tallied results for each candidate (1:1 with Candidate)
