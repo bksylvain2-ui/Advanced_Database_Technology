@@ -1,11 +1,14 @@
 -- =====================================================
--- TASK 10: Create and Use Database Links (FDW Simulation)
+-- TASK 2: Create and Use Database Links (FDW Simulation)
+-- Assignment 3: Distributed and Parallel Database
 -- Database: evotingdb
 -- PostgreSQL (pgAdmin 4) Compatible
 -- =====================================================
 
 -- Prerequisites: 
--- 1. Run task9_distributed_schema_fragmentation.sql
+-- 1. Run task1_create_schema.sql (basic tasks)
+-- 2. Run task3_insert_mock_data.sql (basic tasks)
+-- 3. Run task1_distributed_schema_fragmentation.sql (Assignment 3)
 
 -- PostgreSQL uses Foreign Data Wrapper (FDW) instead of Oracle database links
 -- We'll use postgres_fdw to connect between schemas
