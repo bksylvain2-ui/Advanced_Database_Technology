@@ -1,5 +1,6 @@
 -- =====================================================
--- TASK 15: Parallel Data Loading / ETL Simulation
+-- TASK 7: Parallel Data Loading / ETL Simulation
+-- Assignment 3: Distributed and Parallel Database
 -- Database: evotingdb
 -- PostgreSQL (pgAdmin 4) Compatible
 -- =====================================================
