@@ -1,13 +1,14 @@
 -- =====================================================
--- TASK 14: Distributed Concurrency Control
+-- TASK 6: Distributed Concurrency Control
+-- Assignment 3: Distributed and Parallel Database
 -- Database: evotingdb
 -- PostgreSQL (pgAdmin 4) Compatible
 -- =====================================================
 
 -- Prerequisites: 
--- 1. Run task1_create_schema.sql
--- 2. Run task3_insert_mock_data.sql
--- 3. Run task9_distributed_schema_fragmentation.sql
+-- 1. Run task1_create_schema.sql (basic tasks)
+-- 2. Run task3_insert_mock_data.sql (basic tasks)
+-- 3. Run task1_distributed_schema_fragmentation.sql (Assignment 3)
 
 -- Demonstrate lock conflicts using pg_locks when multiple sessions access same data
 
