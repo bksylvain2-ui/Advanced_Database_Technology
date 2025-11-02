@@ -1,5 +1,6 @@
 -- =====================================================
--- TASK 9: Distributed Schema Design & Fragmentation
+-- TASK 1: Distributed Schema Design & Fragmentation
+-- Assignment 3: Distributed and Parallel Database
 -- Database: evotingdb
 -- PostgreSQL (pgAdmin 4) Compatible
 -- =====================================================
@@ -166,4 +167,29 @@ FROM evotingdb_nodeB.Candidate;
 -- Horizontal fragmentation splits tables by rows based on a condition.
 -- Node A contains Gasabo District data, Node B contains Nyarugenge District data.
 -- This improves performance by distributing data across logical nodes.
+- =====================================================
+-- DISPLAY ALL DATA FROM BOTH NODES (A & B)
+-- =====================================================
 
+-- Display all Parties from both nodes
+SELECT 
+    'Node A' AS SourceNode,
+    PartyID,
+    PartyName,
+    Leader,
+    Symbol,
+    Headquarters
+FROM 
+    evotingdb_nodeA.Party
+UNION ALL
+SELECT 
+    'Node B' AS SourceNode,
+    PartyID,
+    PartyName,
+    Leader,
+    Symbol,
+    Headquarters
+FROM 
+    evotingdb_nodeB.Party
+ORDER BY 
+    SourceNode, PartyID;
