@@ -1,1 +1,0 @@
-# Advanced_Database_Technology
