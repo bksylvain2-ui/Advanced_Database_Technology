@@ -1,17 +1,14 @@
 
 # National E-Voting and Election Monitoring System
 ## Rwanda Case Study
-
 This database project implements a comprehensive e-voting system for Rwanda, tracking voters, candidates, constituencies, political parties, ballots, and election results.
 
 ## Database Information
-
 - **Database Name**: `evoting`
 - **DBMS**: PostgreSQL (pgAdmin 4)
 - **Context**: Rwandan electoral system with realistic data
 
 ## Database Schema
-
 ### Tables
 
 1. **Constituency** - Electoral districts/constituencies in Rwanda
@@ -43,9 +40,7 @@ This database project implements a comprehensive e-voting system for Rwanda, tra
    - Stores: TotalVotes, DeclaredDate
 
 ## Installation Instructions
-
 ### Method 1: Using pgAdmin 4 Query Tool
-
 1. Open pgAdmin 4 and connect to your PostgreSQL server
 2. Create the database:
    \`\`\`sql
@@ -74,7 +69,6 @@ psql -d evoting -f scripts/07-additional-queries.sql
 \`\`\`
 
 ## Key Features
-
 ### 1. Data Integrity
 - Strong primary and foreign key constraints
 - CHECK constraints for data validation
@@ -100,7 +94,6 @@ psql -d evoting -f scripts/07-additional-queries.sql
 - 20 valid ballots cast
 
 ## Key Queries Included
-
 1. Total votes per candidate per constituency
 2. Update declared results after tally completion
 3. Identify winning candidates per region
@@ -113,53 +106,13 @@ psql -d evoting -f scripts/07-additional-queries.sql
 10. Winners summary across all constituencies
 
 ## Testing
-
 Run `06-test-triggers.sql` to verify:
 - Duplicate vote prevention works correctly
 - Inactive voters cannot vote
 - Results auto-update when ballots are inserted
 - CASCADE DELETE works from Candidate to Ballot
 
-## Sample Queries
-
-### View Party Vote Summary
-\`\`\`sql
-SELECT * FROM vw_party_vote_summary;
-\`\`\`
-
-### Get Winners by Constituency
-\`\`\`sql
-SELECT * FROM vw_constituency_results WHERE PositionRank = 1;
-\`\`\`
-
-### Check Voter Turnout
-\`\`\`sql
-SELECT 
-    Name AS Constituency,
-    RegisteredVoters,
-    (SELECT COUNT(DISTINCT VoterID) FROM Ballot b 
-     INNER JOIN Voter v ON b.VoterID = v.VoterID 
-     WHERE v.ConstituencyID = c.ConstituencyID) AS VotersTurnedOut
-FROM Constituency c;
-\`\`\`
-
-## Project Structure
-
-\`\`\`
-rwanda-evoting-db/
-├── scripts/
-│   ├── 01-create-schema.sql       # Table creation with constraints
-│   ├── 02-insert-sample-data.sql  # Sample Rwandan data
-│   ├── 03-queries.sql             # Core analysis queries
-│   ├── 04-create-views.sql        # Summary views
-│   ├── 05-create-triggers.sql     # Data integrity triggers
-│   ├── 06-test-triggers.sql       # Trigger testing
-│   └── 07-additional-queries.sql  # Additional reports
-└── README.md                       # This file
-\`\`\`
-
 ## Notes
-
 - All National IDs follow the 16-digit Rwandan format
 - Regions include: Kigali, Northern, Southern, Eastern, Western
 - All timestamps use PostgreSQL's TIMESTAMP type
@@ -208,8 +161,8 @@ The fragmentation rule is **deterministic**: given any VoterID, we can always ca
 The CHECK constraints **prevent incorrect data** from being inserted:
 ### CASCADE DELETE
 When a candidate is deleted from the Candidates table, all their votes are automatically removed from both fragments:
-## 5. Benefits of This Approach
 
+## 5. Benefits of This Approach
 1. **Scalability**: Data is distributed across multiple nodes
 2. **Performance**: Queries can be parallelized across fragments
 3. **Data Integrity**: CHECK constraints ensure correct partitioning
