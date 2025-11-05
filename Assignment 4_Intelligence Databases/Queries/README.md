@@ -1,9 +1,13 @@
 # Intelligence Databases - Debugging SQL codes
 
 ## Project Overview
-This folder contains solutions for Intelligent Databases. It covered the following
-- (1) debugging the declarative constraints, (2)active databases, (3) deductive databases, (4) knowledge bases, and (5) spatial databases.
-- 
+This folder contains solutions for the Intelligent Databases topic, focusing on using declarative constraints as the database’s primary method for ensuring the validity of prescriptions before any application code executes. The assignment addresses the following questions:
+(1) debugging the declarative constraints,
+(2)active databases, 
+(3) deductive databases, 
+(4) knowledge bases, and 
+(5) spatial databases.
+  
 ## One by one solving the questions 
 ### 1) Rules (Declarative Constraints): Safe Prescriptions
 **Objective**: Implement declarative constraints as the database's first line of defense for prescription validation.
