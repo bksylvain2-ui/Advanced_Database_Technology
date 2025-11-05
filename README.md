@@ -60,10 +60,6 @@ This database project implements a comprehensive e-voting system for Rwanda, tra
    - `05-create-triggers.sql` - Creates triggers for data integrity
    - `06-test-triggers.sql` - Tests trigger functionality
    - `07-additional-queries.sql` - Additional reporting queries
-
-### Method 2: Using psql Command Line
-
-\`\`\`bash
 # Create database
 createdb evoting
 
