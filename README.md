@@ -168,10 +168,8 @@ rwanda-evoting-db/
 
 # A1: NATIONAL E-VOTING & RESULTS 
 # A1: Fragment & Recombine Main Fact - Code Explanation
-=====================================================================================================================
-
+===================================================================
 ## 1. DDL for Ballot_A and Ballot_B
-
 ### What is Horizontal Fragmentation?
 Horizontal fragmentation splits a table's rows across multiple database nodes based on a deterministic rule. Each fragment contains a subset of rows, but all fragments have the same schema (columns).
 
@@ -181,7 +179,6 @@ We use **HASH-based partitioning** on the `VoterID` column:
 - **Node_B (Ballot_B)**: Stores rows where `VoterID` ends in an ODD digit (1, 3, 5, 7, 9)
 
 **Formula**: `MOD(VoterID, 10)` determines which fragment receives the row.
-
 ---
 **Key Components:**
 1. **SERIAL PRIMARY KEY**: Auto-incrementing unique identifier for each vote
@@ -189,61 +186,7 @@ We use **HASH-based partitioning** on the `VoterID` column:
 3. **CASCADE DELETE**: When a Candidate is deleted, all their votes are automatically removed
 4. **Indexes**: Created on foreign key columns for query performance
 
-## 2. Population Scripts with ≤10 Total Committed Rows
-
-### Data Distribution Strategy
-- **Total Rows**: 10 (exactly at the limit)
-- **Node_A**: 5 rows (50%)
-- **Node_B**: 5 rows (50%)
-
-### Population Code Explanation
-
-#### Inserting into Ballot_A (5 rows)
-\`\`\`sql
-INSERT INTO Ballot_A (VoterID, CandidateID, ConstituencyID, VoteTimestamp) VALUES
-(1000, 1, 1, '2024-01-15 08:30:00'),  -- VoterID ends in 0 (EVEN) ✓
-(1002, 2, 1, '2024-01-15 09:15:00'),  -- VoterID ends in 2 (EVEN) ✓
-(1004, 3, 2, '2024-01-15 10:00:00'),  -- VoterID ends in 4 (EVEN) ✓
-(1006, 4, 2, '2024-01-15 11:30:00'),  -- VoterID ends in 6 (EVEN) ✓
-(1008, 5, 3, '2024-01-15 12:45:00');  -- VoterID ends in 8 (EVEN) ✓
-
-COMMIT;
-\`\`\`
-
-**Why these VoterIDs?**
-- 1000 → MOD(1000, 10) = 0 (EVEN) ✓
-- 1002 → MOD(1002, 10) = 2 (EVEN) ✓
-- 1004 → MOD(1004, 10) = 4 (EVEN) ✓
-- 1006 → MOD(1006, 10) = 6 (EVEN) ✓
-- 1008 → MOD(1008, 10) = 8 (EVEN) ✓
-
-All pass the CHECK constraint for Ballot_A.
-
-#### Inserting into Ballot_B (5 rows)
-\`\`\`sql
-INSERT INTO Ballot_B (VoterID, CandidateID, ConstituencyID, VoteTimestamp) VALUES
-(1001, 6, 3, '2024-01-15 08:45:00'),  -- VoterID ends in 1 (ODD) ✓
-(1003, 7, 4, '2024-01-15 09:30:00'),  -- VoterID ends in 3 (ODD) ✓
-(1005, 8, 4, '2024-01-15 10:15:00'),  -- VoterID ends in 5 (ODD) ✓
-(1007, 9, 5, '2024-01-15 11:00:00'),  -- VoterID ends in 7 (ODD) ✓
-(1009, 10, 5, '2024-01-15 13:00:00'); -- VoterID ends in 9 (ODD) ✓
-
-COMMIT;
-\`\`\`
-
-**Why these VoterIDs?**
-- 1001 → MOD(1001, 10) = 1 (ODD) ✓
-- 1003 → MOD(1003, 10) = 3 (ODD) ✓
-- 1005 → MOD(1005, 10) = 5 (ODD) ✓
-- 1007 → MOD(1007, 10) = 7 (ODD) ✓
-- 1009 → MOD(1009, 10) = 9 (ODD) ✓
-
-All pass the CHECK constraint for Ballot_B.
-
----
-
 ## 3. How the Code Produces the Required Outputs
-
 ### Output 1: DDL for Ballot_A and Ballot_B ✓
 The `CREATE TABLE` statements define:
 - **Identical schemas** (same columns, data types)
@@ -257,11 +200,8 @@ The `INSERT` statements:
 - Total: **10 committed rows** (at the limit)
 - Each row satisfies its fragment's CHECK constraint
 - `COMMIT` ensures data is permanently stored
-
 ---
-
 ## 4. Key Concepts Demonstrated
-
 ### Deterministic Partitioning
 The fragmentation rule is **deterministic**: given any VoterID, we can always calculate which fragment it belongs to using `MOD(VoterID, 10)`.
 ### Constraint Enforcement
@@ -277,7 +217,6 @@ When a candidate is deleted from the Candidates table, all their votes are autom
 5. **Transparency**: Applications can query `Ballot_ALL` view without knowing about fragmentation
 
 ## 7. CREATE DATABASE LINK (proj_link)
-
 ### What is a Database Link?
 
 A **database link** is a connection between two database instances that allows queries to access data on a remote database as if it were local. In Oracle, this is called a "database link" (e.g., `@proj_link`). In PostgreSQL, we use **Foreign Data Wrapper (postgres_fdw)** to achieve the same functionality.
@@ -291,7 +230,6 @@ In our distributed architecture:
 The database link enables **cross-node queries** without moving data between servers.
 
 ### Benefits of Database Links
-
 1. **Transparency**: Applications query remote data as if it were local
 2. **No Data Duplication**: Data stays on its original node
 3. **Real-Time Access**: Always queries the current state of remote data
@@ -299,7 +237,6 @@ The database link enables **cross-node queries** without moving data between ser
 5. **Centralized Management**: Node_A can coordinate queries across all nodes
 
 ## Summary: Database Link (proj_link)
-
 The database link implementation:
 - **Enables cross-node queries** from Node_A to Node_B
 - **Uses postgres_fdw** as PostgreSQL's equivalent to Oracle database links
@@ -318,7 +255,6 @@ This infrastructure is essential for creating the unified `Ballot_ALL` view that
 The **Ballot_ALL view** is the **recombination layer** that unifies the fragmented data from both nodes into a single logical table. It allows applications to query all votes across both fragments using a single query, without needing to know about the underlying distribution.
 
 ### Why UNION ALL?
-
 **UNION ALL** combines result sets from multiple queries:
 - **UNION**: Combines and removes duplicates (slower)
 - **UNION ALL**: Combines without duplicate checking (faster)
@@ -326,7 +262,6 @@ The **Ballot_ALL view** is the **recombination layer** that unifies the fragment
 Since our fragments are **mutually exclusive** (no VoterID can be in both fragments due to CHECK constraints), we use **UNION ALL** for better performance.
 
 ### Performance Considerations
-
 #### When UNION ALL is Efficient
 ✓ Fragments are mutually exclusive (no duplicates)  
 ✓ Queries filter on the partitioning key (VoterID)  
@@ -338,7 +273,6 @@ Since our fragments are **mutually exclusive** (no VoterID can be in both fragme
 ✗ Sorting large result sets from multiple nodes  
 
 ## Summary: Ballot_ALL View
-
 The **Ballot_ALL view** successfully:
 - **Recombines** fragmented data from Node_A and Node_B using UNION ALL
 - **Provides transparency** so applications query one logical table
@@ -351,7 +285,6 @@ This view is the **key to distributed database transparency**, allowing the Rwan
 ---
 
 ## 9. Matching COUNT(*) and Checksum Validation
-
 ### Why Validation is Critical
 
 After implementing horizontal fragmentation and recombination, we must **prove correctness** by validating that:
@@ -610,7 +543,6 @@ This pattern is useful for:
 - **Inventory control** (prevent overselling)
 - **Credit limits** (prevent overspending)
 - **Capacity management** (max bookings per time slot)
-
 ---
 ## Key Takeaways
 
