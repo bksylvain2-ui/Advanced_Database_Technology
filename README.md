@@ -66,7 +66,6 @@ psql -d evoting -f scripts/04-create-views.sql
 psql -d evoting -f scripts/05-create-triggers.sql
 psql -d evoting -f scripts/06-test-triggers.sql
 psql -d evoting -f scripts/07-additional-queries.sql
-\`\`\`
 
 ## Key Features
 ### 1. Data Integrity
